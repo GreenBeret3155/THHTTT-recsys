@@ -12,6 +12,8 @@ from src.distances import get_most_similar_documents
 from src.models import make_texts_corpus
 from src.utils import markdown_to_text
 
+from bson.objectid import ObjectId
+
 client = pymongo.MongoClient(settings.MONGODB_SETTINGS["host"])
 db = client[settings.MONGODB_SETTINGS["db"]]
 mongo_col = db[settings.MONGODB_SETTINGS["collection"]]
@@ -76,9 +78,9 @@ def show_posts():
     return render_template('index.html', random_posts=random_posts)
 
 
-@app.route('/posts/<slug>', methods=["GET"])
-def show_post(slug):
-    main_post = mongo_col.find_one({"slug": slug})
+@app.route('/posts/<id>', methods=["GET"])
+def show_post(id):
+    main_post = mongo_col.find_one({"_id": ObjectId(id)})
     main_post = {
         "url": main_post["url"],
         "title": main_post["title"],
@@ -100,11 +102,16 @@ def show_post(slug):
 
     most_sim_ids = [int(id_) for id_ in most_sim_ids]
     posts = mongo_col.find({"idrs": {"$in": most_sim_ids}})
+    for post in posts:
+        print(post.keys())
     related_posts = [
         {
+            "id": str(post["_id"]),
             "url": post["url"],
             "title": post["title"],
-            "slug": post["slug"]
+            "slug": post["slug"],
+            "author": post["author"],
+            "createdAt": post["createdAt"]
         }
         for post in posts
     ][1:]
@@ -113,7 +120,6 @@ def show_post(slug):
     #     'index.html', main_post=main_post, posts=related_posts
     # )
     return {
-        "main_post":main_post,
         "related_posts": related_posts
     }
 
